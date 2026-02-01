@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==============================================================================
-# K3s 自动优化安装脚本 - 最终版 (weix2025/k3s-installer)
-# 逻辑：环境探测 -> 代理优选 -> 远程+本地+备份源合并 -> 并行测速 -> 8C16G 优化安装
+# K3s 自动优化安装脚本 (weix2025/k3s-installer)
+# Power by @weix2025 && OpenClaw
 # ==============================================================================
 set -e
 
@@ -10,7 +10,7 @@ GITHUB_USER="weix2025"
 GITHUB_REPO="k3s-installer"
 BRANCH="main"
 
-# --- 2. 脚本内置硬编码源 (绝对兜底) ---
+# --- 2. 脚本内置硬编码源 ---
 declare -A DEFAULT_SOURCES=(
     ["docker"]="docker.m.daocloud.io,mirror.baidubce.com,docker.mirrors.sjtug.sjtu.edu.cn,docker.nju.edu.cn"
     ["quay"]="quay.m.daocloud.io,quay.1ms.run,quay.nju.edu.cn"
@@ -35,7 +35,7 @@ trap "rm -rf $MIRROR_DIR $TEMP_RESULT" EXIT
 mkdir -p "$MIRROR_DIR"
 
 # ==============================================================================
-# 步骤 1: 环境与地理位置探测
+# 步骤 1: 地理位置探测
 # ==============================================================================
 check_env_proxy() {
     log_info "正在检测网络环境与地理位置..."
@@ -59,7 +59,7 @@ check_env_proxy() {
 }
 
 # ==============================================================================
-# 步骤 2: 三级跳同步源 (主列表 -> 备份列表 -> 脚本硬编码)
+# 步骤 2: 冗余 + 同步源
 # ==============================================================================
 load_and_merge_sources() {
     local BASE_URL="${GH_PROXY}https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}"
@@ -90,7 +90,7 @@ load_and_merge_sources() {
 }
 
 # ==============================================================================
-# 步骤 3: 并发测速与配置生成
+# 步骤 3: 并发测速与生成配置
 # ==============================================================================
 check_speed_task() {
     local type=$1; local url=$2
@@ -165,3 +165,4 @@ install_k3s
 
 log_info "K3s 安装与镜像优选完成！"
 kubectl get nodes
+
