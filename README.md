@@ -1,4 +1,4 @@
-# K3s Installer (OpenClaw Edition)
+# K3s Installer
 
 这是一个针对国内环境优化的 K3s 自动安装脚本。集成自动测速与自愈机制，确保在复杂网络环境下依然拥有极高的安装成功率。
 
