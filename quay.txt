@@ -1,0 +1,12 @@
+quay.m.daocloud.io
+quay.1ms.run
+quay.xuanyuan.me
+quay.mirrorify.net
+quay-pull.ygxz.in
+quay.linkos.org
+quay.13140521.xyz
+quay.registry.cyou
+quay.chenby.cn
+quay-mirror.qiniu.com
+quay.nju.edu.cn
+quay.milu.moe

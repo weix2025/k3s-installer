@@ -1,0 +1,12 @@
+ghcr.m.daocloud.io
+ghcr.1ms.run
+ghcr.xuanyuan.me
+ghcr.mirrorify.net
+ghcr-pull.ygxz.in
+ghcr.linkos.org
+ghcr.13140521.xyz
+ghcr.registry.cyou
+ghcr.chenby.cn
+ghcr.dockerproxy.com
+ghcr.nju.edu.cn
+ghcr.milu.moe

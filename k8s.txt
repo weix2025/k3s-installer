@@ -1,0 +1,10 @@
+k8s.m.daocloud.io
+k8s.1ms.run
+k8s.xuanyuan.me
+k8s.mirrorify.net
+k8s-pull.ygxz.in
+k8s.linkos.org
+k8s.registry.cyou
+k8s.chenby.cn
+registry.lank8s.cn
+k8s.nju.edu.cn

@@ -1,0 +1,9 @@
+k8s-gcr.m.daocloud.io
+k8s-gcr.xuanyuan.me
+k8s-gcr.mirrorify.net
+k8s-gcr-pull.ygxz.in
+k8s-gcr.13140521.xyz
+k8sgcr.registry.cyou
+lank8s.cn
+k8s.dockerproxy.com
+k8s-gcr.nju.edu.cn
