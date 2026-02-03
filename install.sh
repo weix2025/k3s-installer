@@ -44,7 +44,7 @@ check_env_proxy() {
     country=$(echo "$country" | tr '[:lower:]' '[:upper:]')
 
     if [[ "$country" == "CN" || "$country" == "UNKNOWN" ]]; then
-        log_warn "环境判定为国内，正在选择 GitHub 加速代�?.."
+        log_warn "环境判定为国内，正在选择 GitHub 加速代理..."
         for p in "${PROXIES[@]}"; do
             if curl -I -s --connect-timeout 2 "${p}https://github.com" > /dev/null; then
                 GH_PROXY="$p"
@@ -52,7 +52,7 @@ check_env_proxy() {
                 return 0
             fi
         done
-        log_warn "未找到可用代理，将尝试直�?
+        log_warn "未找到可用代理，将尝试直连"
     else
         log_info "环境判定为海外，直连下载"
         GH_PROXY=""
@@ -67,12 +67,13 @@ load_and_merge_sources() {
     local BASE_URL="${GH_PROXY}${RAW_BASE}"
 
     for type in "${!REG_MAP[@]}"; do
-        log_info "获取 ${type} 镜像源列�?.."
+        log_info "获取 ${type} 镜像源列表..."
         local target_txt="$MIRROR_DIR/${type}.txt"
         local temp_remote="$MIRROR_DIR/${type}.remote"
         local remote_list=""
 
-        # 尝试下载远程列表，增�?-L 处理重定�?        if curl -sLf --connect-timeout 5 "${BASE_URL}/${type}.txt" -o "$temp_remote" && [ -s "$temp_remote" ]; then
+        # 尝试下载远程列表，增加 -L 处理重定向
+        if curl -sLf --connect-timeout 5 "${BASE_URL}/${type}.txt" -o "$temp_remote" && [ -s "$temp_remote" ]; then
             remote_list=$(cat "$temp_remote")
             log_info "  - ${type} 远程同步成功"
         else
@@ -92,6 +93,7 @@ load_and_merge_sources() {
 check_speed_task() {
     local type=$1
     local url=$2
+    # 修正：处理 401 状态码（Registry常见），并获取首字节时间
     local http_info
     http_info=$(curl -o /dev/null -s -I -w "%{http_code} %{time_starttransfer}" --connect-timeout 3 "https://$url/v2/")
     local code=$(echo "$http_info" | awk '{print $1}')
@@ -105,12 +107,13 @@ check_speed_task() {
 }
 
 optimize_and_config() {
-    log_info "执行并行测速优�?(20 线程)..."
+    log_info "执行并行测速优选 (20 线程)..."
     for type in "${!REG_MAP[@]}"; do
         while read -r url; do
             [[ -z "$url" ]] && continue
             check_speed_task "$type" "$url" &
-            # 兼容旧版�?Bash 的并行控�?            [[ $(jobs -r | wc -l) -ge 20 ]] && sleep 0.1
+            # 兼容旧版本 Bash 的并行控制
+            [[ $(jobs -r | wc -l) -ge 20 ]] && sleep 0.1
         done < "$MIRROR_DIR/${type}.txt"
     done
     wait
@@ -141,7 +144,8 @@ optimize_and_config() {
 }
 
 # ==============================================================================
-# 步骤 4: 节点资源预留与安�?# ==============================================================================
+# 步骤 4: 节点资源预留与安装
+# ==============================================================================
 install_k3s() {
     log_info "配置 8C16G 节点资源预留..."
     cat > /etc/rancher/k3s/config.yaml << EOF
@@ -155,7 +159,7 @@ kubelet-arg:
   - "max-pods=110"
 EOF
 
-    log_info "拉取 K3s 安装脚本并执�?.."
+    log_info "拉取 K3s 安装脚本并执行..."
     export INSTALL_K3S_MIRROR="cn"
     # 使用代理拉取安装脚本
     curl -sfL "${GH_PROXY}https://raw.githubusercontent.com/rancher/k3s/master/install.sh" | \
@@ -165,11 +169,12 @@ EOF
 # ==============================================================================
 # 主执行流
 # ==============================================================================
-# 检查依�?command -v bc >/dev/null 2>&1 || { log_warn "缺少 bc 命令，测速精度可能受影响"; }
+# 检查依赖
+command -v bc >/dev/null 2>&1 || { log_warn "缺少 bc 命令，测速精度可能受影响"; }
 
 check_env_proxy
 load_and_merge_sources
 optimize_and_config
 install_k3s
 
-log_info "K3s安装完成�?
+log_info "K3s 安装与镜像优选完成！"
