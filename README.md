@@ -26,5 +26,7 @@
 ## 快速开始
 
 一键install脚本：
+在终端执行以下命令，即可安装：
 
-```curl -sfL https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh | sudo bash
+```bash
+curl -sfL [https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh](https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh) | sudo bash
