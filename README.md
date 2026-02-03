@@ -20,6 +20,7 @@
 - **`*.txt`**: 各类镜像源列表（每行一个域名），包括 `docker.txt`, `gcr.txt`, `ghcr.txt`, `k8s.txt`, `quay.txt` 等。
 - **`*.txt.bak`**: 由 GitHub Actions 自动生成的备份文件，保留上一周期的有效源数据。
 - **`.github/workflows/`**: 包含每周自动巡检、存活剔除及备份更新的流水线配置文件。
+  如果您发现了新的快速镜像站，请提交 Issue 或 Pull Request。
 
 ---
 
@@ -28,5 +29,10 @@
 一键install脚本：
 在终端执行以下命令，即可安装：
 
-```bash
-curl -sfL [https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh](https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh) | sudo bash
+`curl -sfL https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh | sudo bash`
+
+---
+
+## 生态共创
+
+- 如果您发现了新的快速镜像站，请提交 Issue 或 Pull Request，这将有助于社区的健壮性。
