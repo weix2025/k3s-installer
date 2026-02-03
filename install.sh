@@ -21,9 +21,9 @@ declare -A DEFAULT_SOURCES=(
 )
 
 declare -A REG_MAP=( ["docker"]="docker.io" ["quay"]="quay.io" ["gcr"]="gcr.io" ["k8s-gcr"]="k8s.gcr.io" ["k8s"]="registry.k8s.io" ["ghcr"]="ghcr.io" )
-PROXIES=("https://gh-proxy.org/" "https://cdn.gh-proxy.org/")
+PROXIES=("https://gh-proxy.org/" "https://mirror.ghproxy.com/")
 
-# 日志颜色与辅助
+# 日志辅助
 log_info() { echo -e "\033[32m[✓]\033[0m $1"; }
 log_warn() { echo -e "\033[33m[!]\033[0m $1"; }
 log_error() { echo -e "\033[31m[✗]\033[0m $1"; }
@@ -35,23 +35,24 @@ trap "rm -rf $MIRROR_DIR $TEMP_RESULT" EXIT
 mkdir -p "$MIRROR_DIR"
 
 # ==============================================================================
-# 步骤 1: 地理位置探测
+# 步骤 1: 地理位置探测与代理选择
 # ==============================================================================
 check_env_proxy() {
     log_info "正在检测网络环境与地理位置..."
-    local country="Unknown"
+    local country
     country=$(curl -s --connect-timeout 2 https://ipapi.co/country/ || echo "Unknown")
     country=$(echo "$country" | tr '[:lower:]' '[:upper:]')
 
     if [[ "$country" == "CN" || "$country" == "UNKNOWN" ]]; then
         log_warn "环境判定为国内，正在选择 GitHub 加速代理..."
         for p in "${PROXIES[@]}"; do
-            if curl -I -s --connect-timeout 2 "${p}https://gh-proxy.org/https://github.com" > /dev/null; then
+            if curl -I -s --connect-timeout 2 "${p}https://github.com" > /dev/null; then
                 GH_PROXY="$p"
                 log_info "选用代理: $GH_PROXY"
-                break
+                return 0
             fi
         done
+        log_warn "未找到可用代理，将尝试直连"
     else
         log_info "环境判定为海外，直连下载"
         GH_PROXY=""
@@ -59,44 +60,48 @@ check_env_proxy() {
 }
 
 # ==============================================================================
-# 步骤 2: 冗余 + 同步源
+# 步骤 2: 同步远程镜像列表
 # ==============================================================================
 load_and_merge_sources() {
-    local BASE_URL="${GH_PROXY}https://gh-proxy.org/https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}"
+    local RAW_BASE="https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}"
+    local BASE_URL="${GH_PROXY}${RAW_BASE}"
 
     for type in "${!REG_MAP[@]}"; do
-        log_info "加载 ${type} 镜像列表..."
+        log_info "获取 ${type} 镜像源列表..."
         local target_txt="$MIRROR_DIR/${type}.txt"
         local temp_remote="$MIRROR_DIR/${type}.remote"
         local remote_list=""
 
-        # 1. 尝试主列表 (.txt)
-        if curl -sLf --connect-timeout 3 "${BASE_URL}/${type}.txt" -o "$temp_remote" && [ -s "$temp_remote" ]; then
+        # 尝试下载远程列表，增加 -L 处理重定向
+        if curl -sLf --connect-timeout 5 "${BASE_URL}/${type}.txt" -o "$temp_remote" && [ -s "$temp_remote" ]; then
             remote_list=$(cat "$temp_remote")
-            log_info "  - 远程同步成功"
-        # 2. 尝试备份列表 (.txt.bak)
-        elif curl -sLf --connect-timeout 3 "${BASE_URL}/${type}.txt.bak" -o "$temp_remote" && [ -s "$temp_remote" ]; then
-            remote_list=$(cat "$temp_remote")
-            log_warn "  - 主列表失败，已回滚至 7 日备份源 (.bak)"
-        # 3. 最终兜底
+            log_info "  - ${type} 远程同步成功"
         else
-            log_warn "  - 远程无法连接，使用脚本内置兜底"
+            log_warn "  - ${type} 远程列表获取失败，使用内置源"
         fi
 
-        # 合并硬编码源 + 远程源
-        local local_list=$(echo "${DEFAULT_SOURCES[$type]}" | tr ',' '\n')
+        # 合并源：内置 + 远程
+        local local_list
+        local_list=$(echo "${DEFAULT_SOURCES[$type]}" | tr ',' '\n')
         echo -e "${local_list}\n${remote_list}" | sed 's/[[:space:]]//g' | grep -v '^$' | sort -u > "$target_txt"
     done
 }
 
 # ==============================================================================
-# 步骤 3: 并发测速与生成配置
+# 步骤 3: 并发测速与配置生成
 # ==============================================================================
 check_speed_task() {
-    local type=$1; local url=$2
-    local time=$(curl -o /dev/null -s -I -w "%{time_starttransfer}" --connect-timeout 2 "https://$url/v2/")
-    if [[ $? -eq 0 && "$time" != "0.000" ]]; then
-        echo "$type $time $url" >> "$TEMP_RESULT"
+    local type=$1
+    local url=$2
+    local http_info
+    http_info=$(curl -o /dev/null -s -I -w "%{http_code} %{time_starttransfer}" --connect-timeout 3 "https://$url/v2/")
+    local code=$(echo "$http_info" | awk '{print $1}')
+    local time=$(echo "$http_info" | awk '{print $2}')
+
+    if [[ "$code" == "200" || "$code" == "401" ]]; then
+        if (( $(echo "$time > 0" | bc -l 2>/dev/null || [ "$time" != "0.000" ]) )); then
+            echo "$type $time $url" >> "$TEMP_RESULT"
+        fi
     fi
 }
 
@@ -106,22 +111,27 @@ optimize_and_config() {
         while read -r url; do
             [[ -z "$url" ]] && continue
             check_speed_task "$type" "$url" &
-            [[ $(jobs -r | wc -l) -ge 20 ]] && wait -n
+            # 兼容旧版本 Bash 的并行控制
+            [[ $(jobs -r | wc -l) -ge 20 ]] && sleep 0.1
         done < "$MIRROR_DIR/${type}.txt"
     done
     wait
 
     log_info "生成 /etc/rancher/k3s/registries.yaml"
-    mkdir -p /etc/rancher/k3s
+    [ ! -d "/etc/rancher/k3s" ] && mkdir -p /etc/rancher/k3s
+    
     {
         echo "mirrors:"
         for type in "docker" "quay" "gcr" "ghcr" "k8s" "k8s-gcr"; do
             local key="${REG_MAP[$type]}"
             echo "  \"$key\":"
             echo "    endpoint:"
-            local sorted=$(grep "^$type " "$TEMP_RESULT" | sort -n -k 2 | awk '{print $3}')
+            local sorted
+            sorted=$(grep "^$type " "$TEMP_RESULT" | sort -n -k 2 | awk '{print $3}' | head -n 3)
+            
             if [[ -z "$sorted" ]]; then
-                local fallback=$(echo "${DEFAULT_SOURCES[$type]}" | cut -d',' -f1)
+                local fallback
+                fallback=$(echo "${DEFAULT_SOURCES[$type]}" | cut -d',' -f1)
                 echo "      - \"https://$fallback\""
             else
                 for s in $sorted; do
@@ -133,11 +143,10 @@ optimize_and_config() {
 }
 
 # ==============================================================================
-# 步骤 4: 8C16G 优化安装
+# 步骤 4: 节点资源预留与安装
 # ==============================================================================
 install_k3s() {
     log_info "配置 8C16G 节点资源预留..."
-    mkdir -p /etc/rancher/k3s
     cat > /etc/rancher/k3s/config.yaml << EOF
 node-name: "$(hostname)"
 node-ip: "$(hostname -I | awk '{print $1}')"
@@ -151,18 +160,21 @@ EOF
 
     log_info "拉取 K3s 安装脚本并执行..."
     export INSTALL_K3S_MIRROR="cn"
-    curl -sfL "${GH_PROXY}https://gh-proxy.org/https://raw.githubusercontent.com/rancher/k3s/master/install.sh" | \
+    # 使用代理拉取安装脚本
+    curl -sfL "${GH_PROXY}https://raw.githubusercontent.com/rancher/k3s/master/install.sh" | \
     INSTALL_K3S_EXEC="--disable traefik --disable servicelb" sh -
 }
 
 # ==============================================================================
-# 执行流程
+# 主执行流
 # ==============================================================================
+# 检查依赖
+command -v bc >/dev/null 2>&1 || { log_warn "缺少 bc 命令，测速精度可能受影响"; }
+
 check_env_proxy
 load_and_merge_sources
 optimize_and_config
 install_k3s
 
-log_info "K3s 安装与镜像优选完成！"
-kubectl get nodes
+log_info "K3s安装完成！"
 
