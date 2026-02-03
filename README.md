@@ -27,5 +27,4 @@
 
 一键install脚本：
 
-```bash
-curl -sfL [https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh](https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh) | bash
+```curl -sfL https://gh-proxy.org/https://raw.githubusercontent.com/weix2025/k3s-installer/main/install.sh | sudo bash
