@@ -21,7 +21,7 @@ declare -A DEFAULT_SOURCES=(
 )
 
 declare -A REG_MAP=( ["docker"]="docker.io" ["quay"]="quay.io" ["gcr"]="gcr.io" ["k8s-gcr"]="k8s.gcr.io" ["k8s"]="registry.k8s.io" ["ghcr"]="ghcr.io" )
-PROXIES=("https://ghfast.top/" "https://hk.gh-proxy.org/" "https://gh-proxy.org/" "https://cdn.gh-proxy.org/")
+PROXIES=("https://gh-proxy.org/" "https://cdn.gh-proxy.org/")
 
 # 日志颜色与辅助
 log_info() { echo -e "\033[32m[✓]\033[0m $1"; }
@@ -165,3 +165,4 @@ install_k3s
 
 log_info "K3s 安装与镜像优选完成！"
 kubectl get nodes
+
