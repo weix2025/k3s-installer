@@ -46,7 +46,7 @@ check_env_proxy() {
     if [[ "$country" == "CN" || "$country" == "UNKNOWN" ]]; then
         log_warn "环境判定为国内，正在选择 GitHub 加速代理..."
         for p in "${PROXIES[@]}"; do
-            if curl -I -s --connect-timeout 2 "${p}https://github.com" > /dev/null; then
+            if curl -I -s --connect-timeout 2 "${p}https://gh-proxy.org/https://github.com" > /dev/null; then
                 GH_PROXY="$p"
                 log_info "选用代理: $GH_PROXY"
                 break
@@ -62,8 +62,8 @@ check_env_proxy() {
 # 步骤 2: 冗余 + 同步源
 # ==============================================================================
 load_and_merge_sources() {
-    local BASE_URL="${GH_PROXY}https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}"
-    
+    local BASE_URL="${GH_PROXY}https://gh-proxy.org/https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}"
+
     for type in "${!REG_MAP[@]}"; do
         log_info "加载 ${type} 镜像列表..."
         local target_txt="$MIRROR_DIR/${type}.txt"
@@ -151,7 +151,7 @@ EOF
 
     log_info "拉取 K3s 安装脚本并执行..."
     export INSTALL_K3S_MIRROR="cn"
-    curl -sfL "${GH_PROXY}https://raw.githubusercontent.com/rancher/k3s/master/install.sh" | \
+    curl -sfL "${GH_PROXY}https://gh-proxy.org/https://raw.githubusercontent.com/rancher/k3s/master/install.sh" | \
     INSTALL_K3S_EXEC="--disable traefik --disable servicelb" sh -
 }
 
@@ -165,4 +165,3 @@ install_k3s
 
 log_info "K3s 安装与镜像优选完成！"
 kubectl get nodes
-
